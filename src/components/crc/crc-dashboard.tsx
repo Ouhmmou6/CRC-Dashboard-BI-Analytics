@@ -344,10 +344,20 @@ export default function CrcDashboard() {
   }, [filters, rows]);
 
   const filteredRows = useMemo(() => applyFilters(rows, effectiveFilters), [rows, effectiveFilters]);
+  const [metierResultatFilter, setMetierResultatFilter] = useState("all");
 
   const kpis = useMemo(() => globalKpis(filteredRows), [filteredRows]);
   const pivotResult = useMemo(() => pivotRésultatParRégion(filteredRows), [filteredRows]);
-  const pivotMet = useMemo(() => pivotMétierParRégion(filteredRows), [filteredRows]);
+  const pivotMet = useMemo(() => {
+  const scoped =
+    metierResultatFilter === "all"
+      ? filteredRows
+      : filteredRows.filter(
+          (r) => r.résultat === metierResultatFilter,
+        );
+
+  return pivotMétierParRégion(scoped);
+}, [filteredRows, metierResultatFilter]);
   const pivotNat = useMemo(() => pivotNatureParRégion(filteredRows), [filteredRows]);
   const sérieJour = useMemo(() => dailySeries(filteredRows), [filteredRows]);
   const sérieMois = useMemo(() => monthlySeries(filteredRows), [filteredRows]);
@@ -359,6 +369,17 @@ export default function CrcDashboard() {
   const résOptions = [...new Set(rows.map((r) => r.résultat))].sort((a, b) =>
     a.localeCompare(b, "fr"),
   );
+  const metierResultatOptions = useMemo(
+  () =>
+    Array.from(
+      new Set(
+        filteredRows
+          .map((r) => r.résultat)
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "fr")),
+  [filteredRows],
+);
 
   const exportDataset = exportUsesFilters ? filteredRows : rows;
 
@@ -1339,23 +1360,56 @@ const téléBar = téléopRanking.slice(0, 12).map((o) => ({
               exportChartRef={pivotResultChartRef}
             />
           ) : null}
-          {reportConfig.tables.pivotMetier ? (
-            <CrcRegionPivotWidget
-              widgetId="pivotMetier"
-              title="2. Métier × Régions"
-              subtitle="Métiers issus Page3 après normalisation d'étiquettes"
-              labelHeader="Métier"
-              rowLabelKey="métier"
-              rows={pivotMet as any[]}
-              regionVisibility={columnVisibility.pivotRegions.pivotMetier}
-              onToggleRegion={(s) => togglePivotRegion("pivotMetier", s)}
-              isDark={isDark}
-              palette={palette}
-              exportBasename={exportFileBase}
-              exportTableRef={pivotMetierTableRef}
-              exportChartRef={pivotMetierChartRef}
-            />
-          ) : null}
+            {reportConfig.tables.pivotMetier ? (
+              <GlassCard
+                title="2. Métier × Régions"
+                subtitle="Métiers issus Page3 après normalisation d'étiquettes"
+              >
+                <div className="mb-4 flex items-center gap-3 flex-wrap">
+                  <label className="text-xs font-semibold uppercase text-slate-500">
+                    Résultat
+                  </label>
+
+                  <select
+                    value={metierResultatFilter}
+                    onChange={(e) =>
+                      setMetierResultatFilter(e.target.value)
+                    }
+                    className="rounded-xl border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white dark:bg-slate-900"
+                  >
+                    <option value="all">Tous</option>
+
+                    {metierResultatOptions.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+
+                  <span className="text-xs text-slate-500">
+                    {pivotMet.length} métiers
+                  </span>
+                </div>
+
+                <CrcRegionPivotWidget
+                  widgetId="pivotMetier"
+                  title=""
+                  subtitle=""
+                  labelHeader="Métier"
+                  rowLabelKey="métier"
+                  rows={pivotMet as any[]}
+                  regionVisibility={columnVisibility.pivotRegions.pivotMetier}
+                  onToggleRegion={(s) =>
+                    togglePivotRegion("pivotMetier", s)
+                  }
+                  isDark={isDark}
+                  palette={palette}
+                  exportBasename={exportFileBase}
+                  exportTableRef={pivotMetierTableRef}
+                  exportChartRef={pivotMetierChartRef}
+                />
+              </GlassCard>
+            ) : null}
           {reportConfig.tables.pivotNature ? (
             <CrcRegionPivotWidget
               widgetId="pivotNature"
